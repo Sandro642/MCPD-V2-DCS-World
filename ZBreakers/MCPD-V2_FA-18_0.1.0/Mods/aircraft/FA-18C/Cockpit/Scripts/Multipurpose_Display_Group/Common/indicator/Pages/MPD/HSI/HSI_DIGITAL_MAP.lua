@@ -1,36 +1,47 @@
 dofile(LockOn_Options.script_path.."Multipurpose_Display_Group/Common/indicator/Pages/MPD/MPD_page_defs.lua")
 
--- Activer l'affichage de la carte HSI
-AddVideoSignalRender_MPD_FullScreen({{"MPD_HSI_DigitalMapShow"}})
+-- Ajout de la carte visuelle avec les couleurs basées sur le relief
+AddVideoSignalRender_MPD_FullScreen({
+    {"MPD_HSI_DigitalMapShow"},
+    {"RemoveTextAnnotations", true} -- Supprime les annotations textuelles
+})
 
--- Définir la taille de l'écran
-local sz = HalfUnitsPerSide
+-- Configuration des matériaux pour correspondre aux couleurs souhaitées
+local reliefMaterial = CreateMaterial("RELIEF_COLOR", {0.0, 0.7, 0.3, 1.0}) -- Exemple pour vert
+local waterMaterial = CreateMaterial("WATER_COLOR", {0.0, 0.3, 0.7, 1.0}) -- Exemple pour bleu
+local highLandMaterial = CreateMaterial("HIGHLAND_COLOR", {0.9, 0.8, 0.3, 1.0}) -- Exemple pour jaune
 
--- Créer un rectangle pour la carte
-local verts = {{-sz,  sz},
-               { sz,  sz},
-               { sz, -sz},
-               {-sz, -sz}}
+-- Définition des zones avec les matériaux définis
+local function AddReliefMap()
+    local szRelief = 1.0
+    local vertsRelief = {
+        {-szRelief, szRelief},
+        {szRelief, szRelief},
+        {szRelief, -szRelief},
+        {-szRelief, -szRelief}
+    }
 
--- Créer un élément pour afficher le signal vidéo
-local videoSignal_MPD = CreateElement "ceTexPoly"
-local parent = nil
+    local meshRelief = CreateElement "ceMeshPoly"
+    meshRelief.name = "meshRelief"
+    meshRelief.isdraw = true
+    meshRelief.material = reliefMaterial
+    meshRelief.vertices = vertsRelief
+    meshRelief.indices = default_box_indices
+    meshRelief.primitivetype = "triangles"
+    meshRelief.screenspace = 2
+    Add(meshRelief)
+end
 
--- Définir la texture de rendu
-local material = "render_target_"..string.format("%d", GetRenderTarget() + 1)
+-- Suppression du texte
+local function RemoveTextAnnotations()
+    local elements = GetAllElements()
+    for _, element in ipairs(elements) do
+        if element.type == "text" then
+            element.isdraw = false
+        end
+    end
+end
 
--- Appliquer des propriétés de symboles communs
-setSymbolCommonProperties(videoSignal_MPD, "videoSignal_MPD", nil, parent, {{"MPD_HSI_DigitalMapShow"}}, material)
-
--- Définir les coordonnées de la texture et l'ajout du rendu
-videoSignal_MPD.vertices = verts
-videoSignal_MPD.indices = default_box_indices
-videoSignal_MPD.tex_params = {0.5, 0.5, 1 / UnitsPerSide, 1 / UnitsPerSide}
-
--- Activer l'alpha additive et les filtres de couleurs (pour obtenir un effet similaire à celui que vous souhaitez)
-videoSignal_MPD.additive_alpha = true
-videoSignal_MPD.input_space_SRGB = true
-videoSignal_MPD.material = "render_target_filtered"
-
--- Ajouter l'élément à l'écran
-Add(videoSignal_MPD)
+-- Appel des fonctions pour appliquer les modifications
+AddReliefMap()
+RemoveTextAnnotations()
